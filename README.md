@@ -130,6 +130,166 @@ I attached stepper motor DC motor and HMI to its ports and now we are readyfor t
 
 
 
+# Arduino Code
+
+```
+#include <Stepper.h>
+#include <Arduino.h>
+#include "BasicStepperDriver.h"
+#include "L298N_MotorDriver.h"
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(2, 3); // RX, TX
+int A = 0;
+int B = 0;
+int state = 0;
+int EN = 12;
+String message;
+int QTY, numMessages, endBytes;
+byte inByte;
+int flag = 0;
+volatile long temp, counter = 0;
+float MTR = 0;  
+int K = 1;
+int sens = A4;
+L298N_MotorDriver motor(5,7,8);
+
+#define DIR  14
+#define STEP  15
+#define MICROSTEPS 16
+#define MOTOR_STEPS 200
+#define RPM 60
+
+int count = 0;
+BasicStepperDriver stepper(MOTOR_STEPS, DIR, STEP);
+
+
+
+
+
+
+
+
+
+
+void setup()
+{ 
+
+
+  pinMode(sens,INPUT);
+  pinMode(EN,OUTPUT);
+motor.setSpeed(255);         // Sets the speed for the motor. 0 - 255
+             // Turns the motor on
+  
+  
+  numMessages, endBytes = 0;
+  Serial.begin(115200);
+ mySerial.begin(115200);
+  stepper.begin(RPM, MICROSTEPS);
+  
+  delay(500);
+  
+
+  
+
+ 
+
+ 
+}
+
+void loop()
+{
+
+data();
+
+if (A > 0 && B > 0) {
+    delay(1000);
+
+digitalWrite(EN,LOW);
+for (int i = 0; i < B; i++){   
+stepper.rotate(31*A);
+delay(500);
+
+while(!digitalRead(sens)){
+motor.setDirection(false);  
+motor.enable();
+}
+motor.setDirection(true);
+motor.enable();
+delay(5);
+motor.disable();
+delay(500);
+}
+
+ digitalWrite(EN,HIGH);
+A=0;
+ B=0;
+}
+
+ 
+
+}
+
+void data() {
+    if (state < 1) {
+      if (numMessages == 1) { //Did we receive the anticipated number of messages? In this case we only want to receive 1 message.
+        A = QTY;
+        Serial.println(A);//See what the important message is that the Arduino receives from the Nextion
+        numMessages = 0; //Now that the entire set of data is received, reset the number of messages received
+        state = 1;
+      }
+    }
+
+    if (state > 0) {
+      if (numMessages == 1) { //Did we receive the anticipated number of messages? In this case we only want to receive 1 message.
+        B = QTY;
+        Serial.println(B);//See what the important message is that the Arduino receives from the Nextion
+        numMessages = 0; //Now that the entire set of data is received, reset the number of messages received
+        state = 0;
+      }
+    }
+
+
+
+
+
+
+    if (mySerial.available()) { //Is data coming through the serial from the Nextion?
+      inByte = mySerial.read();
+
+      // Serial.println(inByte); //See the data as it comes in
+
+      if (inByte > 47 && inByte < 58) { //Is it data that we want to use?
+        message.concat(char(inByte)); //Cast the decimal number to a character and add it to the message
+      }
+      else if (inByte == 255) { //Is it an end byte?
+        endBytes = endBytes + 1; //If so, count it as an end byte.
+      }
+
+      if (inByte == 255 && endBytes == 3) { //Is it the 3rd (aka last) end byte?
+        QTY = message.toInt(); //Because we have now received the whole message, we can save it in a variable.
+        message = ""; //We received the whole message, so now we can clear the variable to avoid getting mixed messages.
+        endBytes = 0; //We received the whole message, we need to clear the variable so that we can identify the next message's end
+        numMessages  = numMessages + 1; //We received the whole message, therefore we increment the number of messages received.
+
+        //Now lets test if it worked by playing around with the variable.
+
+      }
+    }
+  }
+
+
+
+ void cutter (){
+   motor.setDirection(false);
+  motor.enable();
+  delay(1100);
+  motor.setDirection(true);
+  delay(50);
+  motor.disable();
+
+ }
+```
+
 
 
 ![Nested Sequence 01](https://user-images.githubusercontent.com/19898602/172768076-7550b09b-9fdb-4795-9ec8-8a9cbe500523.gif)
